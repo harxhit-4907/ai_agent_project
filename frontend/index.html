@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Newsletter Agent</title>
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b;
+      --line:#dbe4f0; --accent:#2563eb; --accent2:#0f172a; --good:#16a34a;
+      --bad:#dc2626;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg);
+      color:var(--ink);
+    }
+    header{
+      background:var(--accent2); color:#fff; padding:18px 24px;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    header h1{margin:0; font-size:20px}
+    header span{font-size:13px; opacity:.8}
+    .wrap{max-width:1200px; margin:24px auto; padding:0 16px}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:14px;
+      box-shadow:0 8px 24px rgba(15,23,42,.06); overflow:hidden;
+    }
+    .card h2{
+      margin:0; padding:14px 16px; font-size:15px; background:#f8fafc;
+      border-bottom:1px solid var(--line);
+    }
+    .card .body{padding:16px}
+    label{display:block; font-size:13px; font-weight:700; margin:10px 0 8px}
+    textarea, input{
+      width:100%; border:1px solid var(--line); border-radius:10px;
+      padding:12px 14px; font-size:14px; outline:none; background:#fff;
+    }
+    textarea:focus, input:focus{border-color:var(--accent)}
+    .toggle{display:flex; gap:8px; margin-bottom:12px}
+    .toggle button{
+      flex:1; border:1px solid var(--line); background:#fff; padding:10px;
+      border-radius:10px; cursor:pointer; font-weight:700; font-size:13px;
+    }
+    .toggle button.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+    .btn{
+      border:none; background:var(--accent); color:#fff; padding:12px 14px;
+      border-radius:10px; cursor:pointer; font-weight:700; width:100%;
+    }
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .btn.secondary{background:var(--accent2)}
+    .log{
+      height:260px; overflow:auto; padding:14px; background:#0b1220; color:#d1fae5;
+      font-family:Consolas,monospace; font-size:13px; line-height:1.6;
+    }
+    .log .err{color:#fca5a5}
+    .log .ok{color:#86efac}
+    .stepbar{
+      display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:18px;
+    }
+    .step{
+      text-align:center; font-size:11px; padding:10px 6px; border:1px solid var(--line);
+      border-radius:10px; background:#fff; color:var(--muted);
+    }
+    .step.active{background:#eff6ff; color:var(--accent); border-color:#bfdbfe}
+    .step.done{background:#ecfdf5; color:var(--good); border-color:#bbf7d0}
+    .tabs{display:flex; gap:6px; margin-bottom:-1px}
+    .tabbtn{
+      border:1px solid var(--line); border-bottom:none; background:#f8fafc;
+      padding:10px 12px; border-radius:10px 10px 0 0; cursor:pointer; font-size:13px;
+    }
+    .tabbtn.active{background:#fff; font-weight:700}
+    .panel{
+      border:1px solid var(--line); border-radius:0 14px 14px 14px; background:#fff;
+      min-height:420px; overflow:hidden;
+    }
+    .pane{display:none; padding:16px}
+    .pane.active{display:block}
+    iframe{
+      width:100%; height:520px; border:none; background:#fff;
+    }
+    pre{
+      margin:0; white-space:pre-wrap; word-break:break-word; font-family:Consolas,monospace;
+      font-size:13px; line-height:1.6;
+    }
+    .feedback{
+      display:none; margin-top:14px; padding:14px; border:1px solid #fca5a5;
+      border-radius:12px; background:#fff7f7;
+    }
+    .feedback h3{margin:0 0 8px; color:var(--bad)}
+    .muted{color:var(--muted); font-size:13px}
+    .row{display:flex; gap:10px; margin-top:10px}
+    .row .btn{flex:1}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Newsletter Agent</h1>
+    <span>FastAPI · LangGraph · Autonomous / HITL</span>
+  </header>
+
+  <div class="wrap">
+    <div class="stepbar" id="stepbar">
+      <div class="step" id="s-plan">Plan</div>
+      <div class="step" id="s-research">Research</div>
+      <div class="step" id="s-summarize">Summarize</div>
+      <div class="step" id="s-write">Write</div>
+      <div class="step" id="s-critique">Critique</div>
+      <div class="step" id="s-revise">Revise</div>
+      <div class="step" id="s-send">Send</div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Agent Configuration</h2>
+        <div class="body">
+          <label>Mode</label>
+          <div class="toggle">
+            <button id="autoBtn" class="active" onclick="setMode('autonomous')">Fully Autonomous</button>
+            <button id="hitlBtn" onclick="setMode('hitl')">Human-in-the-Loop</button>
+          </div>
+
+          <label for="goal">Goal</label>
+          <textarea id="goal" rows="4">Create a weekly newsletter on latest AI agent news and send it to our subscribers.</textarea>
+
+          <div class="row">
+            <button class="btn" id="runBtn" onclick="startRun()">Run Agent</button>
+          </div>
+
+          <div class="feedback" id="feedbackBox">
+            <h3>Human Review Needed</h3>
+            <div class="muted">Add feedback and continue the agent.</div>
+            <label for="feedback">Feedback</label>
+            <textarea id="feedback" rows="3" placeholder="Make the intro stronger, add a TL;DR, reduce length..."></textarea>
+            <div class="row">
+              <button class="btn secondary" onclick="submitFeedback()">Submit Feedback</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Agent Log</h2>
+        <div class="log" id="log">
+          <div>Waiting to start…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Output Preview</h2>
+      <div class="body">
+        <div class="tabs">
+          <button class="tabbtn active" onclick="showTab('rendered')">Rendered</button>
+          <button class="tabbtn" onclick="showTab('html')">HTML</button>
+          <button class="tabbtn" onclick="showTab('plan')">Plan</button>
+          <button class="tabbtn" onclick="showTab('critique')">Critique</button>
+          <button class="tabbtn" onclick="showTab('send')">Send Result</button>
+        </div>
+
+        <div class="panel">
+          <div class="pane active" id="pane-rendered">
+            <iframe id="newsletterFrame"></iframe>
+          </div>
+          <div class="pane" id="pane-html"><pre id="htmlOut"></pre></div>
+          <div class="pane" id="pane-plan"><pre id="planOut"></pre></div>
+          <div class="pane" id="pane-critique"><pre id="critiqueOut"></pre></div>
+          <div class="pane" id="pane-send"><pre id="sendOut"></pre></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentMode = 'autonomous';
+    let currentRunId = null;
+    let currentHTML = '';
+    let currentES = null;
+
+    const STEP_MAP = {
+      plan: 's-plan',
+      research: 's-research',
+      summarize: 's-summarize',
+      write: 's-write',
+      critique: 's-critique',
+      revise: 's-revise',
+      send: 's-send',
+    };
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('autoBtn').classList.toggle('active', mode === 'autonomous');
+      document.getElementById('hitlBtn').classList.toggle('active', mode === 'hitl');
+    }
+
+    function log(msg, cls='') {
+      const el = document.createElement('div');
+      if (cls) el.className = cls;
+      el.textContent = '> ' + msg;
+      const logBox = document.getElementById('log');
+      logBox.appendChild(el);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function resetSteps() {
+      Object.values(STEP_MAP).forEach(id => {
+        const el = document.getElementById(id);
+        el.className = 'step';
+      });
+    }
+
+    function markStep(keyword, state) {
+      const key = Object.keys(STEP_MAP).find(k => keyword.toLowerCase().includes(k));
+      if (!key) return;
+      const el = document.getElementById(STEP_MAP[key]);
+      if (el) el.className = 'step ' + state;
+    }
+
+    function showTab(name) {
+      document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+      document.getElementById('pane-' + name).classList.add('active');
+
+      document.querySelectorAll('.tabbtn').forEach(btn => btn.classList.remove('active'));
+      const btns = document.querySelectorAll('.tabbtn');
+      const map = { rendered:0, html:1, plan:2, critique:3, send:4 };
+      if (btns[map[name]]) btns[map[name]].classList.add('active');
+    }
+
+    async function startRun() {
+      const goal = document.getElementById('goal').value.trim();
+      if (!goal) return alert('Please enter a goal.');
+
+      document.getElementById('runBtn').disabled = true;
+      document.getElementById('feedbackBox').style.display = 'none';
+      document.getElementById('log').innerHTML = '';
+      document.getElementById('htmlOut').textContent = '';
+      document.getElementById('planOut').textContent = '';
+      document.getElementById('critiqueOut').textContent = '';
+      document.getElementById('sendOut').textContent = '';
+      document.getElementById('newsletterFrame').srcdoc = '';
+      currentHTML = '';
+      resetSteps();
+
+      log('Starting agent run…');
+      log('Mode: ' + currentMode);
+
+      try {
+        const res = await fetch('/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ goal, mode: currentMode }),
+        });
+        const data = await res.json();
+        currentRunId = data.run_id;
+        log('Run ID: ' + currentRunId);
+        connectStream(currentRunId);
+      } catch (e) {
+        log('Error starting run: ' + e.message, 'err');
+        document.getElementById('runBtn').disabled = false;
+      }
+    }
+
+    function connectStream(runId) {
+      if (currentES) currentES.close();
+      currentES = new EventSource('/stream/' + runId);
+
+      currentES.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'ping') return;
+
+        if (data.type === 'step') {
+          log(data.message);
+          const activeMatch = data.message.match(/Running:\s*(\w+)/i);
+          const doneMatch = data.message.match(/✅\s*(\w+)/i);
+          if (activeMatch) markStep(activeMatch[1], 'active');
+          if (doneMatch) markStep(doneMatch[1], 'done');
+
+          if (currentMode === 'hitl' && data.message.toLowerCase().includes('critique complete')) {
+            document.getElementById('feedbackBox').style.display = 'block';
+          }
+        }
+
+        if (data.type === 'done') {
+          log(data.message, 'ok');
+          currentES.close();
+          await fetchOutput(runId);
+        }
+
+        if (data.type === 'error') {
+          log(data.message, 'err');
+          currentES.close();
+          document.getElementById('runBtn').disabled = false;
+        }
+      };
+
+      currentES.onerror = async () => {
+        try { await fetchOutput(runId); } catch (_) {}
+      };
+    }
+
+    async function fetchOutput(runId) {
+      try {
+        const res = await fetch('/output/' + runId);
+        if (!res.ok) {
+          setTimeout(() => fetchOutput(runId), 1200);
+          return;
+        }
+
+        const data = await res.json();
+        currentHTML = data.newsletter_html || '';
+
+        document.getElementById('htmlOut').textContent = currentHTML;
+        document.getElementById('planOut').textContent = data.plan || '';
+        document.getElementById('critiqueOut').textContent = data.critique || '';
+        document.getElementById('sendOut').textContent = data.send_result || '';
+        document.getElementById('newsletterFrame').srcdoc = currentHTML;
+
+        document.getElementById('feedbackBox').style.display = 'none';
+        document.getElementById('runBtn').disabled = false;
+
+        document.getElementById('s-plan').className = 'step done';
+        document.getElementById('s-research').className = 'step done';
+        document.getElementById('s-summarize').className = 'step done';
+        document.getElementById('s-write').className = 'step done';
+        document.getElementById('s-critique').className = 'step done';
+        document.getElementById('s-revise').className = 'step done';
+        document.getElementById('s-send').className = 'step done';
+
+        log('Newsletter ready.', 'ok');
+        showTab('rendered');
+      } catch (e) {
+        log('Error fetching output: ' + e.message, 'err');
+        document.getElementById('runBtn').disabled = false;
+      }
+    }
+
+    async function submitFeedback() {
+      if (!currentRunId) return;
+      const feedback = document.getElementById('feedback').value || '';
+
+      try {
+        await fetch('/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ run_id: currentRunId, feedback }),
+        });
+        document.getElementById('feedbackBox').style.display = 'none';
+        log('Feedback submitted. Resuming agent…', 'ok');
+      } catch (e) {
+        log('Feedback submit error: ' + e.message, 'err');
+      }
+    }
+  </script>
+</body>
+</html>
